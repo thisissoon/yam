@@ -92,7 +92,15 @@ func (y *Yam) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					var handler http.Handler
 					switch r.Method {
 					case "GET":
-						handler = route.GetHandler
+						handler = route.getHandler
+					case "POST":
+						handler = route.postHandler
+					case "PUT":
+						handler = route.putHandler
+					case "PATCH":
+						handler = route.patchHandler
+					case "DELETE":
+						handler = route.deleteHandler
 					}
 
 					if handler != nil {
@@ -119,7 +127,11 @@ type Route struct {
 	path   string   // full url path
 	Routes []*Route // Routes that live under this route
 
-	GetHandler http.Handler
+	getHandler    http.Handler
+	postHandler   http.Handler
+	putHandler    http.Handler
+	patchHandler  http.Handler
+	deleteHandler http.Handler
 }
 
 func (r *Route) Route(path string) *Route {
@@ -127,7 +139,31 @@ func (r *Route) Route(path string) *Route {
 }
 
 func (r *Route) Get(h handler) *Route {
-	r.GetHandler = http.HandlerFunc(h)
+	r.getHandler = http.HandlerFunc(h)
+
+	return r
+}
+
+func (r *Route) Post(h handler) *Route {
+	r.postHandler = http.HandlerFunc(h)
+
+	return r
+}
+
+func (r *Route) Put(h handler) *Route {
+	r.putHandler = http.HandlerFunc(h)
+
+	return r
+}
+
+func (r *Route) Delete(h handler) *Route {
+	r.deleteHandler = http.HandlerFunc(h)
+
+	return r
+}
+
+func (r *Route) Patch(h handler) *Route {
+	r.patchHandler = http.HandlerFunc(h)
 
 	return r
 }
@@ -160,14 +196,34 @@ func main() {
 	y := NewYam()
 
 	y.Route("/").Get(GetRootHandler)
-	y.Route("/foo")
+	y.Route("/get").Get(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("GET"))
+	})
+	y.Route("/post").Post(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("POST"))
+	})
+	y.Route("/put").Put(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("PUT"))
+	})
+	y.Route("/patch").Patch(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("PATCH"))
+	})
+	y.Route("/delete").Delete(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("DELETE"))
+	})
 
 	a := y.Route("/a").Get(GetAHandler)
 	a.Route("/b").Get(GetBHandler)
-	c := a.Route("/c").Get(GetCHandler)
+	a.Route("/b").Put(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("PUT B Handler"))
+	})
+	c := a.Route("/b/c").Get(GetCHandler)
 	c.Route("/d").Get(GetDHandler)
-	c.Route("/d/e").Get(func(w http.ResponseWriter, r *http.Request) {
+	e := c.Route("/d/e").Get(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("E Handler"))
+	})
+	e.Route("/f").Get(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("F Handler"))
 	})
 
 	fmt.Printf("%+v\n", y)
