@@ -20,57 +20,74 @@ func NewYam() *Yam {
 	}
 }
 
-func (y *Yam) Route(path string) *Route {
+func route(path string, router *Route) *Route {
 	parts := strings.Split(path, "/")[1:]
-	routes := y.Root.Routes
-	router := y.Root
+	routes := router.Routes
+
+	fmt.Println("Start Router:", router.path)
+	fmt.Println("Stat Path:", path)
+	fullPath := router.path + path
 
 	for i, part := range parts {
-		fmt.Println(part)
+		fmt.Println("Part:", part)
 		if i == len(parts)-1 {
+
 			for _, route := range routes {
 				if route.leaf == part {
 					fmt.Println("Route Exists")
+					fmt.Println("--------------")
 					return route
 				}
 			}
 
-			route := &Route{leaf: part}
+			route := &Route{leaf: part, path: fullPath}
+			fmt.Println("Add:", route.path)
+			fmt.Println("Router:", router.path)
 			router.Routes = append(router.Routes, route)
 
+			fmt.Println("--------------")
+
 			return route
+
 		} else {
-			fmt.Println("Not Last Part")
 			for _, route := range routes {
 				if route.leaf == part {
+					fmt.Println("Leaf:", route.leaf)
 					router = route
 				} else {
-					route := &Route{leaf: part}
+					fmt.Println("Router:", router.path)
+					route := &Route{leaf: part, path: router.path + path}
 					router.Routes = append(router.Routes, route)
 					router = route
 				}
 			}
+
 		}
 	}
 
 	return nil
 }
 
+func (y *Yam) Route(path string) *Route {
+	return route(path, y.Root)
+}
+
 func (y *Yam) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")[1:]
+	fmt.Println(parts)
 
 	routes := y.Root.Routes
 	for i, part := range parts {
 		fmt.Println(part)
 		for _, route := range routes {
-			fmt.Println(route.leaf)
+			fmt.Println("Leaf:", route.leaf)
 			if route.leaf == part {
-				fmt.Println("Found Leaf")
+				fmt.Println("Leaf ==", part)
 				if i < len(parts)-1 {
 					routes = route.Routes
 					break
 				} else {
-					fmt.Println("Found")
+					fmt.Println("Found: ", route.path)
 
 					var handler http.Handler
 					switch r.Method {
@@ -99,9 +116,14 @@ func (y *Yam) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type Route struct {
 	leaf   string   // a part of a URL path, /foo/bar - a leaf would be foo and bar
-	Routes []*Route // Sub Routes
+	path   string   // full url path
+	Routes []*Route // Routes that live under this route
 
 	GetHandler http.Handler
+}
+
+func (r *Route) Route(path string) *Route {
+	return route(path, r)
 }
 
 func (r *Route) Get(h handler) *Route {
@@ -126,29 +148,27 @@ func GetBHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Get B Handler"))
 }
 
+func GetCHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Get C Handler"))
+}
+
+func GetDHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Get D Handler"))
+}
+
 func main() {
 	y := NewYam()
 
-	y.Root.Routes = append(y.Root.Routes, &Route{
-		leaf:   "foo",
-		Routes: make([]*Route, 0),
-
-		GetHandler: http.HandlerFunc(GetFooHandler),
-	})
-
-	y.Root.Routes[0].Routes = append(y.Root.Routes[0].Routes, &Route{
-		leaf: "bar",
-	})
-
-	y.Root.Routes = append(y.Root.Routes, &Route{
-		leaf:   "baz",
-		Routes: make([]*Route, 0),
-	})
-
 	y.Route("/").Get(GetRootHandler)
 	y.Route("/foo")
-	y.Route("/a").Get(GetAHandler)
-	y.Route("/a/b").Get(GetBHandler)
+
+	a := y.Route("/a").Get(GetAHandler)
+	a.Route("/b").Get(GetBHandler)
+	c := a.Route("/c").Get(GetCHandler)
+	c.Route("/d").Get(GetDHandler)
+	c.Route("/d/e").Get(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("E Handler"))
+	})
 
 	fmt.Printf("%+v\n", y)
 
