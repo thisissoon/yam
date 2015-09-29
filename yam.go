@@ -21,6 +21,10 @@ func New() *Yam {
 	}
 }
 
+func (y *Yam) Route(path string) *Route {
+	return route(path, y.Root)
+}
+
 func route(path string, router *Route) *Route {
 	parts := strings.Split(path, "/")[1:]
 	routes := router.Routes
@@ -69,10 +73,6 @@ func route(path string, router *Route) *Route {
 	return nil
 }
 
-func (y *Yam) Route(path string) *Route {
-	return route(path, y.Root)
-}
-
 func (y *Yam) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")[1:]
 	fmt.Println(parts)
@@ -105,22 +105,7 @@ func (y *Yam) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				} else {
 					fmt.Println("Found: ", route.path)
 
-					var handler http.Handler
-					switch r.Method {
-					case "GET":
-						handler = route.getHandler
-					case "HEAD":
-						handler = route.headHandler
-					case "POST":
-						handler = route.postHandler
-					case "PUT":
-						handler = route.putHandler
-					case "PATCH":
-						handler = route.patchHandler
-					case "DELETE":
-						handler = route.deleteHandler
-					}
-
+					handler := route.handlers[r.Method]
 					if handler != nil {
 						handler.ServeHTTP(w, r)
 						return
@@ -145,26 +130,31 @@ type Route struct {
 	path   string   // full url path
 	Routes []*Route // Routes that live under this route
 
-	headHandler   http.Handler
-	getHandler    http.Handler
-	postHandler   http.Handler
-	putHandler    http.Handler
-	patchHandler  http.Handler
-	deleteHandler http.Handler
+	handlers map[string]http.Handler
 }
 
 func (r *Route) Route(path string) *Route {
 	return route(path, r)
 }
 
+func (r *Route) Add(method string, handler http.Handler) *Route {
+	if r.handlers == nil {
+		r.handlers = make(map[string]http.Handler)
+	}
+
+	r.handlers[method] = handler
+
+	return r
+}
+
 func (r *Route) Head(h handler) *Route {
-	r.getHandler = http.HandlerFunc(h)
+	r.Add("HEAD", http.HandlerFunc(h))
 
 	return r
 }
 
 func (r *Route) Get(h handler) *Route {
-	r.getHandler = http.HandlerFunc(h)
+	r.Add("GET", http.HandlerFunc(h))
 
 	// Implement the HEAD handler by default for all GET requests - HEAD
 	// should not return a body so we wrap it in a middleware
@@ -180,31 +170,31 @@ func (r *Route) Get(h handler) *Route {
 	}
 
 	// Apply the head middleware to the head handler
-	r.headHandler = head(http.HandlerFunc(h))
+	r.Add("HEAD", head(http.HandlerFunc(h)))
 
 	return r
 }
 
 func (r *Route) Post(h handler) *Route {
-	r.postHandler = http.HandlerFunc(h)
+	r.Add("POST", http.HandlerFunc(h))
 
 	return r
 }
 
 func (r *Route) Put(h handler) *Route {
-	r.putHandler = http.HandlerFunc(h)
+	r.Add("PUT", http.HandlerFunc(h))
 
 	return r
 }
 
 func (r *Route) Delete(h handler) *Route {
-	r.deleteHandler = http.HandlerFunc(h)
+	r.Add("DELETE", http.HandlerFunc(h))
 
 	return r
 }
 
 func (r *Route) Patch(h handler) *Route {
-	r.patchHandler = http.HandlerFunc(h)
+	r.Add("PATCH", http.HandlerFunc(h))
 
 	return r
 }
