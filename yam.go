@@ -11,6 +11,16 @@ import (
 
 type handler func(http.ResponseWriter, *http.Request)
 
+func optionsHandler(route *Route) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		methods := []string{}
+		for key, _ := range route.handlers {
+			methods = append(methods, key)
+		}
+		w.Header().Add("Allow", strings.Join(methods, ", "))
+	})
+}
+
 type Yam struct {
 	Root *Route
 }
@@ -140,6 +150,10 @@ func (r *Route) Route(path string) *Route {
 func (r *Route) Add(method string, handler http.Handler) *Route {
 	if r.handlers == nil {
 		r.handlers = make(map[string]http.Handler)
+	}
+
+	if r.handlers["OPTIONS"] == nil {
+		r.handlers["OPTIONS"] = optionsHandler(r)
 	}
 
 	r.handlers[method] = handler
