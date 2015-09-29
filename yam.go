@@ -33,7 +33,24 @@ func New() *Yam {
 }
 
 func (y *Yam) Route(path string) *Route {
-	return route(path, y.Root)
+	r := route(path, y.Root)
+
+	if r.handlers == nil {
+		r.handlers = make(map[string]http.Handler)
+	}
+
+	if r.handlers["OPTIONS"] == nil {
+		r.handlers["OPTIONS"] = optionsHandler(r)
+	}
+
+	if r.handlers["TRACE"] == nil {
+		r.handlers["TRACE"] = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			dump, _ := httputil.DumpRequest(r, false)
+			w.Write(dump)
+		})
+	}
+
+	return r
 }
 
 func route(path string, router *Route) *Route {
@@ -145,10 +162,8 @@ type Route struct {
 }
 
 func (r *Route) Route(path string) *Route {
-	return route(path, r)
-}
+	r = route(path, r)
 
-func (r *Route) Add(method string, handler http.Handler) *Route {
 	if r.handlers == nil {
 		r.handlers = make(map[string]http.Handler)
 	}
@@ -164,6 +179,10 @@ func (r *Route) Add(method string, handler http.Handler) *Route {
 		})
 	}
 
+	return r
+}
+
+func (r *Route) Add(method string, handler http.Handler) *Route {
 	r.handlers[method] = handler
 
 	return r
