@@ -3,32 +3,16 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
 )
 
+// An easy type to reference standard http handler functions
 type handler func(http.ResponseWriter, *http.Request)
 
-func DefaultOptionsHandler(route *Route) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		methods := []string{}
-		for key, _ := range route.handlers {
-			methods = append(methods, key)
-		}
-		w.Header().Add("Allow", strings.Join(methods, ", "))
-	})
-}
-
-func DefaultTraceHandler(route *Route) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		dump, _ := httputil.DumpRequest(r, false)
-		w.Write(dump)
-	})
-}
-
+// Configuration type that allows configuration of YAM
 type Config struct {
 	Options        bool
 	OptionsHandler func(*Route) http.Handler
@@ -36,6 +20,7 @@ type Config struct {
 	TraceHandler   func(*Route) http.Handler
 }
 
+// Constructs a new Config instance with default values
 func NewConfig() *Config {
 	return &Config{
 		Options:        true,
@@ -45,11 +30,13 @@ func NewConfig() *Config {
 	}
 }
 
+// Base YAM type contain the Root Routes and Configuration
 type Yam struct {
 	Root   *Route
 	Config *Config
 }
 
+// Constructs a new YAM instance with default configuration
 func New() *Yam {
 	y := &Yam{}
 	y.Root = &Route{yam: y}
@@ -58,6 +45,7 @@ func New() *Yam {
 	return y
 }
 
+// Creates a new base Route - Effectively a constructor for Route
 func (y *Yam) Route(path string) *Route {
 	route := y.Root.Route(path)
 	route.yam = y
@@ -65,120 +53,98 @@ func (y *Yam) Route(path string) *Route {
 	return route
 }
 
-func (y *Yam) SetConfig(c *Config) {
-	y.Config = c
-}
-
+// Registers a new Route on the Path, building a Tree structure of Routes
 func route(path string, router *Route, y *Yam) *Route {
 	parts := strings.Split(path, "/")[1:]
 	routes := router.Routes
-
-	fmt.Println("Start Router:", router.path)
-	fmt.Println("Stat Path:", path)
 	fullPath := router.path + path
 
 	for i, part := range parts {
-		fmt.Println("Part:", part)
 		if i == len(parts)-1 {
-
 			for _, route := range routes {
 				if route.leaf == part {
-					fmt.Println("Route Exists")
-					fmt.Println("--------------")
 					return route
 				}
 			}
-
 			route := &Route{leaf: part, path: fullPath, yam: y}
-			fmt.Println("Add:", route.path)
-			fmt.Println("Router:", router.path)
 			router.Routes = append(router.Routes, route)
-
-			fmt.Println("--------------")
-
 			return route
-
 		} else {
 			for _, route := range routes {
 				if route.leaf == part {
-					fmt.Println("Leaf:", route.leaf)
 					router = route
 				} else {
-					fmt.Println("Router:", router.path)
 					route := &Route{leaf: part, path: router.path + path, yam: y}
 					router.Routes = append(router.Routes, route)
 					router = route
 				}
 			}
-
 		}
 	}
 
 	return nil
 }
 
+// Implements the http.Handler Interface.  Finds the correct handler for
+// a path based on the path and http verb of the request.
 func (y *Yam) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")[1:]
-	fmt.Println(parts)
 	routes := y.Root.Routes
-
 	for i, part := range parts {
-		fmt.Println(part)
 		for _, route := range routes {
-			fmt.Println("Leaf:", route.leaf)
 			match := false
 			// Pattern Match
 			if strings.HasPrefix(route.leaf, ":") {
-				fmt.Println("Pattern Match")
 				match = true
 				values := url.Values{}
 				values.Add(route.leaf, part)
 				r.URL.RawQuery = url.Values(values).Encode() + "&" + r.URL.RawQuery
 			} else { // Exact match
-				fmt.Println("Exact Match")
 				if route.leaf == part {
 					match = true
 				}
 			}
-
+			// Did we get a match
 			if match {
-				fmt.Println("Leaf ==", part)
+				// If we are not at the end of the path, then we go round again
 				if i < len(parts)-1 {
 					routes = route.Routes
 					break
-				} else {
-					fmt.Println("Found: ", route.path)
-
+				} else { // We are at the end of the path - we have a route
 					handler := route.handlers[r.Method]
+					// Do we have a handler for this Verb
 					if handler != nil {
+						// Yes, serve and return
 						handler.ServeHTTP(w, r)
 						return
 					}
-
-					fmt.Println("No handler for method")
+					// We do not - Serve a 405 Method Not Allowed
 					w.WriteHeader(http.StatusMethodNotAllowed)
 					return
-
 				}
 			}
 		}
 	}
 
 	// If we get here then we have not found a route
-	fmt.Println("Not Found")
 	w.WriteHeader(http.StatusNotFound)
 }
 
+// This type contains all the handlers for each path, each Route can also hold
+// a list of child routes
 type Route struct {
 	leaf   string   // a part of a URL path, /foo/bar - a leaf would be foo and bar
 	path   string   // full url path
 	Routes []*Route // Routes that live under this route
 
-	yam *Yam // Reference to Yam and global configuraion
+	yam *Yam // Reference to Yam and global configuration
 
+	// Verb handlers
 	handlers map[string]http.Handler
 }
 
+// Adds a new route to the tree, and depending on configuration implements
+// default handler implementation for OPTIONS and TRACE requests
 func (r *Route) Route(path string) *Route {
 	r = route(path, r, r.yam)
 
@@ -201,18 +167,37 @@ func (r *Route) Route(path string) *Route {
 	return r
 }
 
+// Adds a new handler to the route based on http Verb
 func (r *Route) Add(method string, handler http.Handler) *Route {
 	r.handlers[method] = handler
 
 	return r
 }
 
+// Set a HEAD request handler for the route
 func (r *Route) Head(h handler) *Route {
 	r.Add("HEAD", http.HandlerFunc(h))
 
 	return r
 }
 
+// Set a OPTIONS request for the route, overrides default implementation
+func (r *Route) Options(h handler) *Route {
+	r.Add("OPTIONS", http.HandlerFunc(h))
+
+	return r
+}
+
+// Set a TRACE request for the route, overrides default implementation
+func (r *Route) Trace(h handler) *Route {
+	r.Add("TRACE", http.HandlerFunc(h))
+
+	return r
+}
+
+// Set a GET request handler for the Route. A default HEAD request implementation
+// will also be implemented since HEAD requests should perform the same as a GET
+// request but simply not return the response body.
 func (r *Route) Get(h handler) *Route {
 	r.Add("GET", http.HandlerFunc(h))
 
@@ -235,111 +220,50 @@ func (r *Route) Get(h handler) *Route {
 	return r
 }
 
+// Set a POST request handler for the route.
 func (r *Route) Post(h handler) *Route {
 	r.Add("POST", http.HandlerFunc(h))
 
 	return r
 }
 
+// Set a PUT request handler for the route.
 func (r *Route) Put(h handler) *Route {
 	r.Add("PUT", http.HandlerFunc(h))
 
 	return r
 }
 
+// Set a DELETE request handler for the route.
 func (r *Route) Delete(h handler) *Route {
 	r.Add("DELETE", http.HandlerFunc(h))
 
 	return r
 }
 
+// Set a PATCH request handler for the route.
 func (r *Route) Patch(h handler) *Route {
 	r.Add("PATCH", http.HandlerFunc(h))
 
 	return r
 }
 
-func GetRootHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Get Root Handler"))
+// Default HTTP Handler function for OPTIONS requests. Adds the Allow header
+// with the http verbs the route supports
+func DefaultOptionsHandler(route *Route) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		methods := []string{}
+		for key, _ := range route.handlers {
+			methods = append(methods, key)
+		}
+		w.Header().Add("Allow", strings.Join(methods, ", "))
+	})
 }
 
-func GetFooHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Get Foo Handler"))
-}
-
-func GetAHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Get A Handler"))
-}
-
-func GetBHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Get B Handler"))
-}
-
-func GetCHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Get C Handler"))
-}
-
-func GetDHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Get D Handler"))
-}
-
-func main() {
-	y := New()
-	y.Config.Trace = true
-
-	y.Route("/").Get(GetRootHandler)
-	y.Route("/get").Get(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("GET"))
+// Default HTTP handler function for TRACE requests. Dumps the request as the Response.
+func DefaultTraceHandler(route *Route) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dump, _ := httputil.DumpRequest(r, false)
+		w.Write(dump)
 	})
-	y.Route("/post").Post(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("POST"))
-	})
-	y.Route("/put").Put(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("PUT"))
-	})
-	y.Route("/patch").Patch(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("PATCH"))
-	})
-	y.Route("/delete").Delete(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("DELETE"))
-	})
-
-	a := y.Route("/a").Get(GetAHandler)
-	a.Route("/b").Get(GetBHandler)
-	a.Route("/b").Put(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("PUT B Handler"))
-	})
-	c := a.Route("/b/c").Get(GetCHandler)
-	c.Route("/d").Get(GetDHandler)
-	e := c.Route("/d/e").Get(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("E Handler"))
-	})
-	e.Route("/f").Get(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("F Handler"))
-	})
-
-	// Pattern Matching
-	a.Route("/:foo").Get(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("A :foo Handler\n"))
-		w.Write([]byte(r.URL.Query().Get(":foo")))
-	})
-
-	bar := a.Route("/:foo/:bar").Get(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("/a/:foo/:bar Handler\n"))
-		w.Write([]byte(r.URL.Query().Get(":foo")))
-		w.Write([]byte("\n"))
-		w.Write([]byte(r.URL.Query().Get(":bar")))
-	})
-
-	bar.Route("/baz").Get(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Foo", "Bar")
-		w.Write([]byte("baz\n"))
-		w.Write([]byte(r.URL.Query().Get(":foo")))
-		w.Write([]byte("\n"))
-		w.Write([]byte(r.URL.Query().Get(":bar")))
-	})
-
-	fmt.Printf("%+v\n", y)
-
-	http.ListenAndServe(":5000", y)
 }
