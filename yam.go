@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strings"
 )
@@ -154,6 +155,13 @@ func (r *Route) Add(method string, handler http.Handler) *Route {
 
 	if r.handlers["OPTIONS"] == nil {
 		r.handlers["OPTIONS"] = optionsHandler(r)
+	}
+
+	if r.handlers["TRACE"] == nil {
+		r.handlers["TRACE"] = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			dump, _ := httputil.DumpRequest(r, false)
+			w.Write(dump)
+		})
 	}
 
 	r.handlers[method] = handler
