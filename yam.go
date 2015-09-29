@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -75,13 +76,28 @@ func (y *Yam) Route(path string) *Route {
 func (y *Yam) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")[1:]
 	fmt.Println(parts)
-
 	routes := y.Root.Routes
+
 	for i, part := range parts {
 		fmt.Println(part)
 		for _, route := range routes {
 			fmt.Println("Leaf:", route.leaf)
-			if route.leaf == part {
+			match := false
+			// Pattern Match
+			if strings.HasPrefix(route.leaf, ":") {
+				fmt.Println("Pattern Match")
+				match = true
+				values := url.Values{}
+				values.Add(route.leaf, part)
+				r.URL.RawQuery = url.Values(values).Encode() + "&" + r.URL.RawQuery
+			} else { // Exact match
+				fmt.Println("Exact Match")
+				if route.leaf == part {
+					match = true
+				}
+			}
+
+			if match {
 				fmt.Println("Leaf ==", part)
 				if i < len(parts)-1 {
 					routes = route.Routes
@@ -224,6 +240,12 @@ func main() {
 	})
 	e.Route("/f").Get(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("F Handler"))
+	})
+
+	// Pattern Matching
+	a.Route("/:foo").Get(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("A :foo Handler\n"))
+		w.Write([]byte(r.URL.Query().Get(":foo")))
 	})
 
 	fmt.Printf("%+v\n", y)
