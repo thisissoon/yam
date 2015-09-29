@@ -33,24 +33,7 @@ func New() *Yam {
 }
 
 func (y *Yam) Route(path string) *Route {
-	r := route(path, y.Root)
-
-	if r.handlers == nil {
-		r.handlers = make(map[string]http.Handler)
-	}
-
-	if r.handlers["OPTIONS"] == nil {
-		r.handlers["OPTIONS"] = optionsHandler(r)
-	}
-
-	if r.handlers["TRACE"] == nil {
-		r.handlers["TRACE"] = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			dump, _ := httputil.DumpRequest(r, false)
-			w.Write(dump)
-		})
-	}
-
-	return r
+	return y.Root.Route(path)
 }
 
 func route(path string, router *Route) *Route {
