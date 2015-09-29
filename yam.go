@@ -12,7 +12,7 @@ import (
 
 type handler func(http.ResponseWriter, *http.Request)
 
-func optionsHandler(route *Route) http.Handler {
+func DefaultOptionsHandler(route *Route) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		methods := []string{}
 		for key, _ := range route.handlers {
@@ -22,21 +22,54 @@ func optionsHandler(route *Route) http.Handler {
 	})
 }
 
-type Yam struct {
-	Root *Route
+func DefaultTraceHandler(route *Route) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dump, _ := httputil.DumpRequest(r, false)
+		w.Write(dump)
+	})
 }
 
-func New() *Yam {
-	return &Yam{
-		Root: &Route{},
+type Config struct {
+	Options        bool
+	OptionsHandler func(*Route) http.Handler
+	Trace          bool
+	TraceHandler   func(*Route) http.Handler
+}
+
+func NewConfig() *Config {
+	return &Config{
+		Options:        true,
+		OptionsHandler: DefaultOptionsHandler,
+		Trace:          false,
+		TraceHandler:   DefaultTraceHandler,
 	}
 }
 
-func (y *Yam) Route(path string) *Route {
-	return y.Root.Route(path)
+type Yam struct {
+	Root   *Route
+	Config *Config
 }
 
-func route(path string, router *Route) *Route {
+func New() *Yam {
+	y := &Yam{}
+	y.Root = &Route{yam: y}
+	y.Config = NewConfig()
+
+	return y
+}
+
+func (y *Yam) Route(path string) *Route {
+	route := y.Root.Route(path)
+	route.yam = y
+
+	return route
+}
+
+func (y *Yam) SetConfig(c *Config) {
+	y.Config = c
+}
+
+func route(path string, router *Route, y *Yam) *Route {
 	parts := strings.Split(path, "/")[1:]
 	routes := router.Routes
 
@@ -56,7 +89,7 @@ func route(path string, router *Route) *Route {
 				}
 			}
 
-			route := &Route{leaf: part, path: fullPath}
+			route := &Route{leaf: part, path: fullPath, yam: y}
 			fmt.Println("Add:", route.path)
 			fmt.Println("Router:", router.path)
 			router.Routes = append(router.Routes, route)
@@ -72,7 +105,7 @@ func route(path string, router *Route) *Route {
 					router = route
 				} else {
 					fmt.Println("Router:", router.path)
-					route := &Route{leaf: part, path: router.path + path}
+					route := &Route{leaf: part, path: router.path + path, yam: y}
 					router.Routes = append(router.Routes, route)
 					router = route
 				}
@@ -141,25 +174,28 @@ type Route struct {
 	path   string   // full url path
 	Routes []*Route // Routes that live under this route
 
+	yam *Yam // Reference to Yam and global configuraion
+
 	handlers map[string]http.Handler
 }
 
 func (r *Route) Route(path string) *Route {
-	r = route(path, r)
+	r = route(path, r, r.yam)
 
 	if r.handlers == nil {
 		r.handlers = make(map[string]http.Handler)
 	}
 
-	if r.handlers["OPTIONS"] == nil {
-		r.handlers["OPTIONS"] = optionsHandler(r)
+	if r.yam.Config.Options {
+		if r.handlers["OPTIONS"] == nil {
+			r.handlers["OPTIONS"] = r.yam.Config.OptionsHandler(r)
+		}
 	}
 
-	if r.handlers["TRACE"] == nil {
-		r.handlers["TRACE"] = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			dump, _ := httputil.DumpRequest(r, false)
-			w.Write(dump)
-		})
+	if r.yam.Config.Trace {
+		if r.handlers["TRACE"] == nil {
+			r.handlers["TRACE"] = r.yam.Config.TraceHandler(r)
+		}
 	}
 
 	return r
@@ -249,6 +285,7 @@ func GetDHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	y := New()
+	y.Config.Trace = true
 
 	y.Route("/").Get(GetRootHandler)
 	y.Route("/get").Get(func(w http.ResponseWriter, r *http.Request) {
