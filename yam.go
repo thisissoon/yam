@@ -1,6 +1,6 @@
 // Yam (Yet Another Mux)
 
-package main
+package yam
 
 import (
 	"net/http"
@@ -18,6 +18,8 @@ type Config struct {
 	OptionsHandler func(*Route) http.Handler
 	Trace          bool
 	TraceHandler   func(*Route) http.Handler
+	AddHeadOnGet   bool
+	HeadHandler    func(http.Handler) http.Handler
 }
 
 // Constructs a new Config instance with default values
@@ -27,6 +29,8 @@ func NewConfig() *Config {
 		OptionsHandler: DefaultOptionsHandler,
 		Trace:          false,
 		TraceHandler:   DefaultTraceHandler,
+		AddHeadOnGet:   true,
+		HeadHandler:    DefaultHeadHandler,
 	}
 }
 
@@ -201,21 +205,10 @@ func (r *Route) Trace(h handler) *Route {
 func (r *Route) Get(h handler) *Route {
 	r.Add("GET", http.HandlerFunc(h))
 
-	// Implement the HEAD handler by default for all GET requests - HEAD
-	// should not return a body so we wrap it in a middleware
-	head := func(n http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Serve the handler
-			n.ServeHTTP(w, r)
-			// Flush the body so we don't write to the client
-			if f, ok := w.(http.Flusher); ok {
-				f.Flush()
-			}
-		})
+	if r.yam.Config.AddHeadOnGet {
+		// Apply the head middleware to the head handler
+		r.Add("HEAD", r.yam.Config.HeadHandler(http.HandlerFunc(h)))
 	}
-
-	// Apply the head middleware to the head handler
-	r.Add("HEAD", head(http.HandlerFunc(h)))
 
 	return r
 }
@@ -265,5 +258,17 @@ func DefaultTraceHandler(route *Route) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		dump, _ := httputil.DumpRequest(r, false)
 		w.Write(dump)
+	})
+}
+
+// Default HEAD Request Handler. Automatically added to GET requests.
+func DefaultHeadHandler(n http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Serve the handler
+		n.ServeHTTP(w, r)
+		// Flush the body so we don't write to the client
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
 	})
 }
