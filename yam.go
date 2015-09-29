@@ -109,6 +109,8 @@ func (y *Yam) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					switch r.Method {
 					case "GET":
 						handler = route.getHandler
+					case "HEAD":
+						handler = route.headHandler
 					case "POST":
 						handler = route.postHandler
 					case "PUT":
@@ -143,6 +145,7 @@ type Route struct {
 	path   string   // full url path
 	Routes []*Route // Routes that live under this route
 
+	headHandler   http.Handler
 	getHandler    http.Handler
 	postHandler   http.Handler
 	putHandler    http.Handler
@@ -154,8 +157,30 @@ func (r *Route) Route(path string) *Route {
 	return route(path, r)
 }
 
+func (r *Route) Head(h handler) *Route {
+	r.getHandler = http.HandlerFunc(h)
+
+	return r
+}
+
 func (r *Route) Get(h handler) *Route {
 	r.getHandler = http.HandlerFunc(h)
+
+	// Implement the HEAD handler by default for all GET requests - HEAD
+	// should not return a body so we wrap it in a middleware
+	head := func(n http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Serve the handler
+			n.ServeHTTP(w, r)
+			// Flush the body so we don't write to the client
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
+		})
+	}
+
+	// Apply the head middleware to the head handler
+	r.headHandler = head(http.HandlerFunc(h))
 
 	return r
 }
@@ -256,6 +281,7 @@ func main() {
 	})
 
 	bar.Route("/baz").Get(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Foo", "Bar")
 		w.Write([]byte("baz\n"))
 		w.Write([]byte(r.URL.Query().Get(":foo")))
 		w.Write([]byte("\n"))
