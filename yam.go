@@ -15,7 +15,7 @@ type Yam struct {
 	Root *Route
 }
 
-func NewYam() *Yam {
+func New() *Yam {
 	return &Yam{
 		Root: &Route{},
 	}
@@ -209,7 +209,7 @@ func GetDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	y := NewYam()
+	y := New()
 
 	y.Route("/").Get(GetRootHandler)
 	y.Route("/get").Get(func(w http.ResponseWriter, r *http.Request) {
@@ -246,6 +246,20 @@ func main() {
 	a.Route("/:foo").Get(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("A :foo Handler\n"))
 		w.Write([]byte(r.URL.Query().Get(":foo")))
+	})
+
+	bar := a.Route("/:foo/:bar").Get(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("/a/:foo/:bar Handler\n"))
+		w.Write([]byte(r.URL.Query().Get(":foo")))
+		w.Write([]byte("\n"))
+		w.Write([]byte(r.URL.Query().Get(":bar")))
+	})
+
+	bar.Route("/baz").Get(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("baz\n"))
+		w.Write([]byte(r.URL.Query().Get(":foo")))
+		w.Write([]byte("\n"))
+		w.Write([]byte(r.URL.Query().Get(":bar")))
 	})
 
 	fmt.Printf("%+v\n", y)
