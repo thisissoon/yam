@@ -33,6 +33,15 @@ var tests = []struct {
 	req      TestRequest
 	response TestResponse
 }{
+	// Root Route
+	{
+		TestRoute{"/", []string{"GET"}, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("root"))
+		}},
+		TestRequest{"/", "GET"},
+		TestResponse{http.StatusOK, []byte("root")},
+	},
 	// Simplest Route
 	{
 		TestRoute{"/foo", []string{"GET"}, func(w http.ResponseWriter, r *http.Request) {
