@@ -78,6 +78,17 @@ var tests = []struct {
 		TestRequest{"/foo/bar", "GET"},
 		TestResponse{http.StatusOK, []byte("bar")},
 	},
+	// Deep Nesting
+	{
+		TestRoute{"/a/b/c/:d/e/f/g/:h/i/j/:k", []string{"GET"}, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(r.URL.Query().Get(":d")))
+			w.Write([]byte(r.URL.Query().Get(":h")))
+			w.Write([]byte(r.URL.Query().Get(":k")))
+		}},
+		TestRequest{"/a/b/c/f/e/f/g/o/i/j/o", "GET"},
+		TestResponse{http.StatusOK, []byte("foo")},
+	},
 }
 
 func TestTables(t *testing.T) {
