@@ -43,8 +43,8 @@ type Yam struct {
 // Constructs a new YAM instance with default configuration
 func New() *Yam {
 	y := &Yam{}
-	y.Root = &Route{yam: y}
 	y.Config = NewConfig()
+	y.Root = &Route{yam: y}
 
 	return y
 }
@@ -52,41 +52,40 @@ func New() *Yam {
 // Creates a new base Route - Effectively a constructor for Route
 func (y *Yam) Route(path string) *Route {
 	route := y.Root.Route(path)
-	route.yam = y
 
 	return route
 }
 
-// Registers a new Route on the Path, building a Tree structure of Routes
-func route(path string, router *Route, y *Yam) *Route {
+// path: the url path
+// base: the route to add the new path too
+// y: the yam instance
+func route(path string, base *Route, y *Yam) *Route {
+	var route *Route
+	// /foo/bar/baz [foo bar baz]
 	parts := strings.Split(path, "/")[1:]
-	routes := router.Routes
-	fullPath := router.path + path
+	//
+	route = base
 
-	for i, part := range parts {
-		if i == len(parts)-1 {
-			for _, route := range routes {
-				if route.leaf == part {
-					return route
-				}
-			}
-			route := &Route{leaf: part, path: fullPath, yam: y}
-			router.Routes = append(router.Routes, route)
-			return route
-		} else {
-			for _, route := range routes {
-				if route.leaf == part {
-					router = route
-				} else {
-					route := &Route{leaf: part, path: router.path + path, yam: y}
-					router.Routes = append(router.Routes, route)
-					router = route
-				}
+	// Iterate over the parts
+	for _, part := range parts {
+		// Iterate over the routes on
+		for _, r := range route.Routes {
+			// This part of the path already exists in the routes
+			if r.leaf == part {
+				// Set our base route to now be this route
+				route = r
+				break
 			}
 		}
+		// The part of the path does not exist in the routes, create it
+		r := &Route{leaf: part, yam: y}
+		// Add the route to the list of routes
+		route.Routes = append(route.Routes, r)
+		// Set the next route to be the one we just created
+		route = r
 	}
 
-	return nil
+	return route
 }
 
 // Implements the http.Handler Interface.  Finds the correct handler for
@@ -94,6 +93,7 @@ func route(path string, router *Route, y *Yam) *Route {
 func (y *Yam) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")[1:]
 	routes := y.Root.Routes
+
 	for i, part := range parts {
 		for _, route := range routes {
 			match := false

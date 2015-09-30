@@ -60,6 +60,15 @@ var tests = []struct {
 		TestRequest{"/foo", "POST"},
 		TestResponse{http.StatusMethodNotAllowed, nil},
 	},
+	// Pattern Matching & Added to Query
+	{
+		TestRoute{"/foo/:bar", []string{"GET"}, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(r.URL.Query().Get(":bar")))
+		}},
+		TestRequest{"/foo/bar", "GET"},
+		TestResponse{http.StatusOK, []byte("bar")},
+	},
 }
 
 func TestTables(t *testing.T) {
@@ -67,14 +76,7 @@ func TestTables(t *testing.T) {
 		y := New()
 		r := y.Route(test.route.Path)
 		for _, method := range test.route.Methods {
-			switch method {
-			case "GET":
-				r.Get(test.route.Handler)
-			case "POST":
-				r.Post(test.route.Handler)
-			case "PUT":
-				r.Put(test.route.Handler)
-			}
+			r.Add(method, http.HandlerFunc(test.route.Handler))
 		}
 
 		s := httptest.NewServer(y)
