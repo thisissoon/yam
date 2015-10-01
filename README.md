@@ -2,7 +2,7 @@
 
 # YAM
 
-[![Build Status](https://img.shields.io/travis/thisissoon/yam.svg)](https://travis-ci.org/thisissoon/yam)
+[![Build Status](https://img.shields.io/travis/thisissoon/yam/master.svg)](https://travis-ci.org/thisissoon/yam)
 [![Coverage](https://img.shields.io/coveralls/thisissoon/yam.svg)](https://coveralls.io/github/thisissoon/yam)
 [![Docs](https://img.shields.io/badge/documentation-godoc-375eab.svg)](https://godoc.org/github.com/thisissoon/yam)
 [![Licsense](https://img.shields.io/badge/LICENSE-MIT-blue.svg)](https://github.com/thisissoon/yam/blob/master/LICENSE)
