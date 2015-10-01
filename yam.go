@@ -56,9 +56,9 @@ func (y *Yam) Route(path string) *Route {
 	return route
 }
 
-// path: the url path
-// base: the route to add the new path too
-// y: the yam instance
+// Gets or Creates the route for the path. As it traverses the tree routes
+// are either created if they do not exist. At the end the function returns
+// the last leaf of the tree
 func route(path string, base *Route, y *Yam) *Route {
 	var route *Route
 	// /foo/bar/baz [foo bar baz]
