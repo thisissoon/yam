@@ -451,3 +451,64 @@ func TestDelete(t *testing.T) {
 		t.Errorf("Body was\n%vshould be:\n%v", string(body[:]), string(expected[:]))
 	}
 }
+
+func TestSubRoutes(t *testing.T) {
+	fn := func(body string) func(http.ResponseWriter, *http.Request) {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(body[:]))
+		}
+	}
+
+	mux := New()
+	mux.Route("/").Get(fn("GET /"))
+	bar := mux.Route("/bar").Get(fn("GET /bar"))
+	bar.Post(fn("Post /bar"))
+	foo := mux.Route("/foo").Get(fn("GET /foo"))
+	foo.Route("/:bar/baz").Get(fn("GET /foo/:bar/baz"))
+	mux.Route("/foo").Put(fn("PUT /foo"))
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	// Table Teest It
+	var tests = []struct {
+		request  TestRequest
+		response TestResponse
+	}{
+		{
+			TestRequest{"/", "GET"},
+			TestResponse{http.StatusOK, []byte("GET /")},
+		},
+		{
+			TestRequest{"/bar", "GET"},
+			TestResponse{http.StatusOK, []byte("GET /bar")},
+		},
+		{
+			TestRequest{"/bar", "POST"},
+			TestResponse{http.StatusOK, []byte("POST /bar")},
+		},
+		{
+			TestRequest{"/foo", "GET"},
+			TestResponse{http.StatusOK, []byte("GET /foo")},
+		},
+		{
+			TestRequest{"/foo", "PUT"},
+			TestResponse{http.StatusOK, []byte("PUT /foo")},
+		},
+		{
+			TestRequest{"/foo/antyhing/baz", "GET"},
+			TestResponse{http.StatusOK, []byte("GET /foo/:bar/baz")},
+		},
+	}
+
+	for _, test := range tests {
+		req, _ := http.NewRequest(test.request.Method, s.URL+test.request.Path, nil)
+		c := &http.Client{}
+		res, _ := c.Do(req)
+
+		if res.StatusCode != test.response.Status {
+			t.Errorf("Status was: %v, should be: %v", res.StatusCode, test.response.Status)
+		}
+	}
+
+}

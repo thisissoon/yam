@@ -62,26 +62,31 @@ func route(path string, base *Route, y *Yam) *Route {
 	var route *Route
 	// /foo/bar/baz [foo bar baz]
 	parts := strings.Split(path, "/")[1:]
-	//
+	// Our starting routes we loop over should be the base route
 	route = base
 
 	// Iterate over the parts
+	var found bool
 	for _, part := range parts {
 		// Iterate over the routes on
+		found = false
 		for _, r := range route.Routes {
 			// This part of the path already exists in the routes
 			if r.leaf == part {
 				// Set our base route to now be this route
 				route = r
+				found = true
 				break
 			}
 		}
-		// The part of the path does not exist in the routes, create it
-		r := &Route{leaf: part, yam: y}
-		// Add the route to the list of routes
-		route.Routes = append(route.Routes, r)
-		// Set the next route to be the one we just created
-		route = r
+		if !found {
+			// The part of the path does not exist in the routes, create it
+			r := &Route{leaf: part, yam: y}
+			// Add the route to the list of routes
+			route.Routes = append(route.Routes, r)
+			// Set the next route to be the one we just created
+			route = r
+		}
 	}
 
 	return route
