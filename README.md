@@ -1,5 +1,10 @@
 # YAM
 
+![Build Status](https://img.shields.io/travis/thisissoon/yam.svg)
+![Coverage](https://img.shields.io/coveralls/thisissoon/yam.svg)
+[![Docs](https://img.shields.io/badge/documentation-godoc-375eab.svg)](https://godoc.org/github.com/thisissoon/yam)
+![Licsense](https://img.shields.io/badge/LICENSE-MIT-blue.svg)
+
 YAM (Yet Another Mux) is another Golang HTTP multiplexer designed to be simple, flexible
 and configurable.
 
@@ -28,61 +33,6 @@ func main() {
 go get github.com/thisissoon/yam
 ```
 
-## More Examples
+## Documentaion
 
-``` go
-y := New()
-y.Config.Trace = true
-
-y.Route("/").Get(GetRootHandler)
-y.Route("/get").Get(func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("GET"))
-})
-y.Route("/post").Post(func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("POST"))
-})
-y.Route("/put").Put(func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("PUT"))
-})
-y.Route("/patch").Patch(func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("PATCH"))
-})
-y.Route("/delete").Delete(func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("DELETE"))
-})
-
-a := y.Route("/a").Get(GetAHandler)
-a.Route("/b").Get(GetBHandler)
-a.Route("/b").Put(func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("PUT B Handler"))
-})
-c := a.Route("/b/c").Get(GetCHandler)
-c.Route("/d").Get(GetDHandler)
-e := c.Route("/d/e").Get(func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("E Handler"))
-})
-e.Route("/f").Get(func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("F Handler"))
-})
-
-// Pattern Matching
-a.Route("/:foo").Get(func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("A :foo Handler\n"))
-    w.Write([]byte(r.URL.Query().Get(":foo")))
-})
-
-bar := a.Route("/:foo/:bar").Get(func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("/a/:foo/:bar Handler\n"))
-    w.Write([]byte(r.URL.Query().Get(":foo")))
-    w.Write([]byte("\n"))
-    w.Write([]byte(r.URL.Query().Get(":bar")))
-})
-
-bar.Route("/baz").Get(func(w http.ResponseWriter, r *http.Request) {
-    w.Header().Add("Foo", "Bar")
-    w.Write([]byte("baz\n"))
-    w.Write([]byte(r.URL.Query().Get(":foo")))
-    w.Write([]byte("\n"))
-    w.Write([]byte(r.URL.Query().Get(":bar")))
-})
-```
+Full package documentation can be found at https://godoc.org/github.com/thisissoon/yam.
