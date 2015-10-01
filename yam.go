@@ -1,4 +1,6 @@
-// Yam (Yet Another Mux)
+// Copyright 2015 SOON_ London Limited. All rights reserved.
+// Use of this source code is governed by The MIT License (MIT).
+// This can be found in the LICENSE file at the repository root.
 
 package yam
 
@@ -19,7 +21,6 @@ type Config struct {
 	Trace          bool
 	TraceHandler   func(*Route) http.Handler
 	AddHeadOnGet   bool
-	HeadHandler    func(http.Handler) http.Handler
 }
 
 // Constructs a new Config instance with default values

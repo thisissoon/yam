@@ -1,4 +1,6 @@
-// Unittests for Yam
+// Copyright 2015 SOON_ London Limited. All rights reserved.
+// Use of this source code is governed by The MIT License (MIT).
+// This can be found in the LICENSE file at the repository root.
 
 package yam
 
