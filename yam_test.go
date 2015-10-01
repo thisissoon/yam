@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -164,5 +165,54 @@ func TestTraceEnabled(t *testing.T) {
 	expected := []byte(fmt.Sprintf("TRACE / HTTP/1.1\r\nHost: %s\r\nAccept-Encoding: gzip\r\nUser-Agent: Go-http-client/1.1\r\n\r\n", url.Host))
 	if !bytes.Equal(body, expected) {
 		t.Errorf("Body was\n%vshould be:\n%v", string(body[:]), string(expected[:]))
+	}
+}
+
+func TestOptionsEnable(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {}
+
+	mux := New()
+	mux.Route("/").Get(fn).Post(fn).Put(fn).Delete(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("OPTIONS", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusOK)
+	}
+
+	expected := []string{"HEAD", "GET", "POST", "PUT", "DELETE"}
+	allow := res.Header.Get("Allow")
+	for _, verb := range expected {
+		if !strings.Contains(allow, verb) {
+			t.Errorf("Allow should contain to be %s", verb)
+		}
+	}
+}
+
+func TestOptionsDisable(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {}
+
+	mux := New()
+	mux.Config.Options = false
+	mux.Route("/").Get(fn).Post(fn).Put(fn).Delete(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("OPTIONS", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusMethodNotAllowed)
+	}
+
+	if res.Header.Get("Allow") != "" {
+		t.Error("Allow header should be empty")
 	}
 }
