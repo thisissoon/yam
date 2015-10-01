@@ -30,7 +30,6 @@ func NewConfig() *Config {
 		Trace:          false,
 		TraceHandler:   DefaultTraceHandler,
 		AddHeadOnGet:   true,
-		HeadHandler:    DefaultHeadHandler,
 	}
 }
 
@@ -207,7 +206,7 @@ func (r *Route) Get(h handler) *Route {
 
 	if r.yam.Config.AddHeadOnGet {
 		// Apply the head middleware to the head handler
-		r.Add("HEAD", r.yam.Config.HeadHandler(http.HandlerFunc(h)))
+		r.Add("HEAD", http.HandlerFunc(h))
 	}
 
 	return r
@@ -258,17 +257,5 @@ func DefaultTraceHandler(route *Route) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		dump, _ := httputil.DumpRequest(r, false)
 		w.Write(dump)
-	})
-}
-
-// Default HEAD Request Handler. Automatically added to GET requests.
-func DefaultHeadHandler(n http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Serve the handler
-		n.ServeHTTP(w, r)
-		// Flush the body so we don't write to the client
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
 	})
 }

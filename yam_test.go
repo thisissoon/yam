@@ -216,3 +216,238 @@ func TestOptionsDisable(t *testing.T) {
 		t.Error("Allow header should be empty")
 	}
 }
+
+// Method Tests
+
+func TestTrace(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("TRACE"))
+	}
+
+	mux := New()
+	mux.Config.Trace = false
+	mux.Route("/").Trace(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("TRACE", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusOK)
+	}
+
+	body, _ := ioutil.ReadAll(res.Body)
+	expected := []byte("TRACE")
+	if !bytes.Equal(body, expected) {
+		t.Errorf("Body was\n%vshould be:\n%v", string(body[:]), string(expected[:]))
+	}
+}
+
+func TestOptions(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Allow", "foo")
+	}
+
+	mux := New()
+	mux.Route("/").Options(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("OPTIONS", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusOK)
+	}
+
+	if res.Header.Get("Allow") != "foo" {
+		t.Errorf("Allow header should be %s, was %s", "foo", res.Header.Get("Allow"))
+	}
+}
+
+func TestGet(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("GET"))
+	}
+
+	mux := New()
+	mux.Route("/").Get(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("GET", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusOK)
+	}
+
+	body, _ := ioutil.ReadAll(res.Body)
+	expected := []byte("GET")
+	if !bytes.Equal(body, expected) {
+		t.Errorf("Body was\n%vshould be:\n%v", string(body[:]), string(expected[:]))
+	}
+}
+
+func TestGetHead(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("GET"))
+	}
+
+	mux := New()
+	mux.Route("/").Get(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("HEAD", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusOK)
+	}
+
+	body, _ := ioutil.ReadAll(res.Body)
+	expected := []byte("")
+	if !bytes.Equal(body, expected) {
+		t.Errorf("Body was\n%vshould be:\n%v", string(body[:]), string(expected[:]))
+	}
+}
+
+func TestHead(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("HEAD"))
+	}
+
+	mux := New()
+	mux.Route("/").Head(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("HEAD", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusOK)
+	}
+
+	body, _ := ioutil.ReadAll(res.Body)
+	expected := []byte("")
+	if !bytes.Equal(body, expected) {
+		t.Errorf("Body was\n%vshould be:\n%v", string(body[:]), string(expected[:]))
+	}
+}
+
+func TestPost(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("POST"))
+	}
+
+	mux := New()
+	mux.Route("/").Post(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("POST", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusOK)
+	}
+
+	body, _ := ioutil.ReadAll(res.Body)
+	expected := []byte("POST")
+	if !bytes.Equal(body, expected) {
+		t.Errorf("Body was\n%vshould be:\n%v", string(body[:]), string(expected[:]))
+	}
+}
+
+func TestPut(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("PUT"))
+	}
+
+	mux := New()
+	mux.Route("/").Put(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("PUT", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusOK)
+	}
+
+	body, _ := ioutil.ReadAll(res.Body)
+	expected := []byte("PUT")
+	if !bytes.Equal(body, expected) {
+		t.Errorf("Body was\n%vshould be:\n%v", string(body[:]), string(expected[:]))
+	}
+}
+
+func TestPatch(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("PATCH"))
+	}
+
+	mux := New()
+	mux.Route("/").Patch(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("PATCH", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusOK)
+	}
+
+	body, _ := ioutil.ReadAll(res.Body)
+	expected := []byte("PATCH")
+	if !bytes.Equal(body, expected) {
+		t.Errorf("Body was\n%vshould be:\n%v", string(body[:]), string(expected[:]))
+	}
+}
+
+func TestDelete(t *testing.T) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("DELETE"))
+	}
+
+	mux := New()
+	mux.Route("/").Delete(fn)
+
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	req, _ := http.NewRequest("DELETE", s.URL, nil)
+	c := &http.Client{}
+	res, _ := c.Do(req)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Status was %v, should be %v", res.StatusCode, http.StatusOK)
+	}
+
+	body, _ := ioutil.ReadAll(res.Body)
+	expected := []byte("DELETE")
+	if !bytes.Equal(body, expected) {
+		t.Errorf("Body was\n%vshould be:\n%v", string(body[:]), string(expected[:]))
+	}
+}
