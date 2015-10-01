@@ -8,5 +8,7 @@ before_install:
   - go get github.com/mattn/goveralls
   - if ! go get code.google.com/p/go.tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
 
+secure: "XicufHyE/FvOIiSHAVuC9DyZSruLZ7cJDkn9wXphMET8/5EVgADvaV6PWJQCPPDxkov+3J7+W1j7BtsOGvtNDFBMMETPMB4A6W7wTfnU2tznZ/nFkAHFBRI1cHaEuEjbd/0SwQ0kZ+CmGWEa5EazkXPSPU4PycSwzejrCL9UMWmePQh4V9cuflPsvnxM4WQUD2OHdiMidhdrIRTrqx9294LbDCX5NOTpr045i44mzPRwsq2QFXj0Hrtf2rASI90PIDXkhvcfG5l7aY44Ha6XSvNCAi6x3bke9n1JUrRYB07KUjyo7IYUECP3pukSgEPlbuv0Vj38h2vmC9NrV73/S5SCYajFHWUEN2XKR4k+EbVsMZUeEwINgMZDnjiEsYF42PCuJXVfWOR84QqkhDi2ysH40V/kKjZ4BR0oP1Jb868YVRhsEoRygjg9XFe9I7UnZLq38wH7H92tIdeKUYy3mwliGJOPm8SFUA9QTCr06rJC2oY4GN8hGIG29ENws0J0VT3/kSf8GlmXXCgS5RP56htVfgo0iaUWlODeBgROVn7C1G34vpjuiMEYRHiARREUYBsZX+rqfJaOJCqxHQ//WUpGOEdgozMXLCZjEyJ5ECvdoglww6JUSxmX8z0Ev/N9ZKLvfVZEGclzfQiB4rlhqodLlKnIrfwI4/kalQT1VxQ="
+
 script:
   - $GOPATH/bin/goveralls -v -repotoken=$COVERALLS_TOKEN
