@@ -1,3 +1,5 @@
+<img src="yam.jpg" height="96" align="left" />
+
 # YAM
 
 [![Build Status](https://img.shields.io/travis/thisissoon/yam.svg)](https://travis-ci.org/thisissoon/yam)
