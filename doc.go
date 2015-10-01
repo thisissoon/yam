@@ -21,11 +21,13 @@ This is YAM's most simplest implementation:
 
 Features
 
-- Method based routing, returning 405 when a route does not implement a specific verb
-- Simple pattern matching using the "/foo/:bar/baz" syntax, values are placed onto the request URL parameters
-- Support for all the standard HTTP verbs out of the box (OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE, TRACE)
-- Sub Routing
-- Configuration, allowing default handler functions overrides and flags for OPTIONS and TRACE
+Yam has the following features:
+
+	- Method based routing, returning 405 when a route does not implement a specific verb
+	- Simple pattern matching using the "/foo/:bar/baz" syntax, values are placed onto the request URL parameters
+	- Support for all the standard HTTP verbs out of the box (OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE, TRACE)
+	- Sub Routing
+	- Configuration, allowing default handler functions overrides and flags for OPTIONS and TRACE
 
 Method Based Routing
 
