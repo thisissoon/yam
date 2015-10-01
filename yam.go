@@ -30,7 +30,6 @@ func NewConfig() *Config {
 		Trace:          false,
 		TraceHandler:   DefaultTraceHandler,
 		AddHeadOnGet:   true,
-		HeadHandler:    DefaultHeadHandler,
 	}
 }
 
@@ -43,8 +42,8 @@ type Yam struct {
 // Constructs a new YAM instance with default configuration
 func New() *Yam {
 	y := &Yam{}
-	y.Root = &Route{yam: y}
 	y.Config = NewConfig()
+	y.Root = &Route{yam: y}
 
 	return y
 }
@@ -52,41 +51,45 @@ func New() *Yam {
 // Creates a new base Route - Effectively a constructor for Route
 func (y *Yam) Route(path string) *Route {
 	route := y.Root.Route(path)
-	route.yam = y
 
 	return route
 }
 
-// Registers a new Route on the Path, building a Tree structure of Routes
-func route(path string, router *Route, y *Yam) *Route {
+// Gets or Creates the route for the path. As it traverses the tree routes
+// are either created if they do not exist. At the end the function returns
+// the last leaf of the tree
+func route(path string, base *Route, y *Yam) *Route {
+	var route *Route
+	// /foo/bar/baz [foo bar baz]
 	parts := strings.Split(path, "/")[1:]
-	routes := router.Routes
-	fullPath := router.path + path
+	// Our starting routes we loop over should be the base route
+	route = base
 
-	for i, part := range parts {
-		if i == len(parts)-1 {
-			for _, route := range routes {
-				if route.leaf == part {
-					return route
-				}
+	// Iterate over the parts
+	var found bool
+	for _, part := range parts {
+		// Iterate over the routes on
+		found = false
+		for _, r := range route.Routes {
+			// This part of the path already exists in the routes
+			if r.leaf == part {
+				// Set our base route to now be this route
+				route = r
+				found = true
+				break
 			}
-			route := &Route{leaf: part, path: fullPath, yam: y}
-			router.Routes = append(router.Routes, route)
-			return route
-		} else {
-			for _, route := range routes {
-				if route.leaf == part {
-					router = route
-				} else {
-					route := &Route{leaf: part, path: router.path + path, yam: y}
-					router.Routes = append(router.Routes, route)
-					router = route
-				}
-			}
+		}
+		if !found {
+			// The part of the path does not exist in the routes, create it
+			r := &Route{leaf: part, yam: y}
+			// Add the route to the list of routes
+			route.Routes = append(route.Routes, r)
+			// Set the next route to be the one we just created
+			route = r
 		}
 	}
 
-	return nil
+	return route
 }
 
 // Implements the http.Handler Interface.  Finds the correct handler for
@@ -94,6 +97,7 @@ func route(path string, router *Route, y *Yam) *Route {
 func (y *Yam) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")[1:]
 	routes := y.Root.Routes
+
 	for i, part := range parts {
 		for _, route := range routes {
 			match := false
@@ -207,7 +211,7 @@ func (r *Route) Get(h handler) *Route {
 
 	if r.yam.Config.AddHeadOnGet {
 		// Apply the head middleware to the head handler
-		r.Add("HEAD", r.yam.Config.HeadHandler(http.HandlerFunc(h)))
+		r.Add("HEAD", http.HandlerFunc(h))
 	}
 
 	return r
@@ -258,17 +262,5 @@ func DefaultTraceHandler(route *Route) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		dump, _ := httputil.DumpRequest(r, false)
 		w.Write(dump)
-	})
-}
-
-// Default HEAD Request Handler. Automatically added to GET requests.
-func DefaultHeadHandler(n http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Serve the handler
-		n.ServeHTTP(w, r)
-		// Flush the body so we don't write to the client
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
 	})
 }
