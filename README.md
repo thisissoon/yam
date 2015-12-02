@@ -14,18 +14,18 @@ and configurable.
 package main
 
 import (
-    "net/http"
+	"net/http"
 
-    "github.com/thisissoon/yam"
+	"github.com/thisissoon/yam"
 )
 
 func main() {
-    mux := yam.New()
-    mux.Route("/").Get(func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Hello World!"))
-    })
+	mux := yam.New()
+	mux.Route("/").Get(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World!"))
+	}))
 
-    http.ListenAndServe(":5000", mux)
+	http.ListenAndServe(":5000", mux)
 }
 ```
 

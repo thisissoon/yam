@@ -18,7 +18,7 @@ import (
 type TestRoute struct {
 	Path    string
 	Methods []string
-	Handler func(http.ResponseWriter, *http.Request)
+	Handler http.Handler
 }
 
 type TestRequest struct {
@@ -42,62 +42,62 @@ var tests = []struct {
 	// Root Route
 	{
 		NewConfig(),
-		TestRoute{"/", []string{"GET"}, func(w http.ResponseWriter, r *http.Request) {
+		TestRoute{"/", []string{"GET"}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("root"))
-		}},
+		})},
 		TestRequest{"/", "GET"},
 		TestResponse{http.StatusOK, []byte("root")},
 	},
 	// Simplest Route
 	{
 		NewConfig(),
-		TestRoute{"/foo", []string{"GET"}, func(w http.ResponseWriter, r *http.Request) {
+		TestRoute{"/foo", []string{"GET"}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(r.URL.Path))
-		}},
+		})},
 		TestRequest{"/foo", "GET"},
 		TestResponse{http.StatusOK, []byte("/foo")},
 	},
 	// 404 Handling
 	{
 		NewConfig(),
-		TestRoute{"/foo", []string{"GET"}, func(w http.ResponseWriter, r *http.Request) {
+		TestRoute{"/foo", []string{"GET"}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(r.URL.Path))
-		}},
+		})},
 		TestRequest{"/bar", "GET"},
 		TestResponse{http.StatusNotFound, nil},
 	},
 	// 405 Handling
 	{
 		NewConfig(),
-		TestRoute{"/foo", []string{"GET"}, func(w http.ResponseWriter, r *http.Request) {
+		TestRoute{"/foo", []string{"GET"}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(r.URL.Path))
-		}},
+		})},
 		TestRequest{"/foo", "POST"},
 		TestResponse{http.StatusMethodNotAllowed, nil},
 	},
 	// Pattern Matching & Added to Query
 	{
 		NewConfig(),
-		TestRoute{"/foo/:bar", []string{"GET"}, func(w http.ResponseWriter, r *http.Request) {
+		TestRoute{"/foo/:bar", []string{"GET"}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(r.URL.Query().Get(":bar")))
-		}},
+		})},
 		TestRequest{"/foo/bar", "GET"},
 		TestResponse{http.StatusOK, []byte("bar")},
 	},
 	// Deep Nesting
 	{
 		NewConfig(),
-		TestRoute{"/a/b/c/:d/e/f/g/:h/i/j/:k", []string{"GET"}, func(w http.ResponseWriter, r *http.Request) {
+		TestRoute{"/a/b/c/:d/e/f/g/:h/i/j/:k", []string{"GET"}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(r.URL.Query().Get(":d")))
 			w.Write([]byte(r.URL.Query().Get(":h")))
 			w.Write([]byte(r.URL.Query().Get(":k")))
-		}},
+		})},
 		TestRequest{"/a/b/c/f/e/f/g/o/i/j/o", "GET"},
 		TestResponse{http.StatusOK, []byte("foo")},
 	},
@@ -109,7 +109,7 @@ func TestTables(t *testing.T) {
 		y.Config = test.config
 		r := y.Route(test.route.Path)
 		for _, method := range test.route.Methods {
-			r.Add(method, http.HandlerFunc(test.route.Handler))
+			r.Add(method, test.route.Handler)
 		}
 
 		s := httptest.NewServer(y)
@@ -171,7 +171,7 @@ func TestTraceEnabled(t *testing.T) {
 }
 
 func TestOptionsEnable(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {}
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
 	mux := New()
 	mux.Route("/").Get(fn).Post(fn).Put(fn).Delete(fn)
@@ -197,7 +197,7 @@ func TestOptionsEnable(t *testing.T) {
 }
 
 func TestOptionsDisable(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {}
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
 	mux := New()
 	mux.Config.Options = false
@@ -222,9 +222,9 @@ func TestOptionsDisable(t *testing.T) {
 // Method Tests
 
 func TestTrace(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("TRACE"))
-	}
+	})
 
 	mux := New()
 	mux.Config.Trace = false
@@ -249,9 +249,9 @@ func TestTrace(t *testing.T) {
 }
 
 func TestOptions(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Allow", "foo")
-	}
+	})
 
 	mux := New()
 	mux.Route("/").Options(fn)
@@ -273,9 +273,9 @@ func TestOptions(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("GET"))
-	}
+	})
 
 	mux := New()
 	mux.Route("/").Get(fn)
@@ -299,9 +299,9 @@ func TestGet(t *testing.T) {
 }
 
 func TestGetHead(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("GET"))
-	}
+	})
 
 	mux := New()
 	mux.Route("/").Get(fn)
@@ -325,9 +325,9 @@ func TestGetHead(t *testing.T) {
 }
 
 func TestHead(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("HEAD"))
-	}
+	})
 
 	mux := New()
 	mux.Route("/").Head(fn)
@@ -351,9 +351,9 @@ func TestHead(t *testing.T) {
 }
 
 func TestPost(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("POST"))
-	}
+	})
 
 	mux := New()
 	mux.Route("/").Post(fn)
@@ -377,9 +377,9 @@ func TestPost(t *testing.T) {
 }
 
 func TestPut(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("PUT"))
-	}
+	})
 
 	mux := New()
 	mux.Route("/").Put(fn)
@@ -403,9 +403,9 @@ func TestPut(t *testing.T) {
 }
 
 func TestPatch(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("PATCH"))
-	}
+	})
 
 	mux := New()
 	mux.Route("/").Patch(fn)
@@ -429,9 +429,9 @@ func TestPatch(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("DELETE"))
-	}
+	})
 
 	mux := New()
 	mux.Route("/").Delete(fn)
@@ -455,10 +455,10 @@ func TestDelete(t *testing.T) {
 }
 
 func TestSubRoutes(t *testing.T) {
-	fn := func(body string) func(http.ResponseWriter, *http.Request) {
-		return func(w http.ResponseWriter, r *http.Request) {
+	fn := func(body string) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(body[:]))
-		}
+		})
 	}
 
 	mux := New()

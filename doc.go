@@ -14,7 +14,7 @@ the net/http package.
 This is YAM's most simplest implementation:
 
 	mux := yam.New()
-	mux.Route("/").Get(func(w http.ResponseWriter, r *http.Request) {
+	mux.Route("/").Get(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Hello World"))
 	})
 	http.ListenAndServe(":5000", mux)
@@ -34,16 +34,47 @@ Method Based Routing
 To implement a method on a route simple call the routes method function for that method:
 
 	mux := yam.New()
-	mux.Route("/").Get(func(w http.ResponseWriter, r *http.Request) {
+	mux.Route("/").Get(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Get Request"))
 	})
-	mux.Route("/").Post(func(w http.ResponseWriter, r *http.Request) {
+	mux.Route("/").Post(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Post Request"))
 	})
 	http.ListenAndServe(":5000", mux)
 
 In the above example only "GET" and "POST" are supported, other methods such as "PUT"
 would return a "405 Method Not Allowed".
+
+Middleare
+
+You can apply middlware globaly to all the routes or on a route by route basis.
+
+	func GlobalMiddleware(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("GobalMiddlware", "True")
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	func RouteOnly(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("RouteOnly", "True")
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	func main() {
+		mux := yam.New()
+		mux.Route("/").Get(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Hello World!"))
+		}))
+
+		mux.Route("/foo").Get(RouteOnly(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Hello World!"))
+		})))
+
+		http.ListenAndServe(":5000", GlobalMiddleware(mux))
+	}
 
 Pattern Matching
 
@@ -52,10 +83,10 @@ are placed on the requests URL as query parameters and therefore no extra depend
 required. The values persist down the path.
 
 	mux := yam.New()
-	mux.Route("/foo/:bar").Get(func(w http.ResponseWriter, r *http.Request) {
+	mux.Route("/foo/:bar").Get(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(r.URL.Query().Get(":bar")))
 	})
-	mux.Route("/foo/:bar/baz/:fiz").Get(func(w http.ResponseWriter, r *http.Request) {
+	mux.Route("/foo/:bar/baz/:fiz").Get(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(r.URL.Query().Get(":bar")+"\n"))
 		w.Write([]byte(r.URL.Query().Get(":fix")+"\n"))
 	})

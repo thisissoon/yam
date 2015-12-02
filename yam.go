@@ -174,29 +174,29 @@ func (r *Route) Route(path string) *Route {
 }
 
 // Adds a new handler to the route based on http Verb
-func (r *Route) Add(method string, f http.HandlerFunc) *Route {
-	r.handlers[method] = http.HandlerFunc(f)
+func (r *Route) Add(method string, h http.Handler) *Route {
+	r.handlers[method] = h
 
 	return r
 }
 
 // Set a HEAD request handler for the route
-func (r *Route) Head(f http.HandlerFunc) *Route {
-	r.Add("HEAD", f)
+func (r *Route) Head(h http.Handler) *Route {
+	r.Add("HEAD", h)
 
 	return r
 }
 
 // Set a OPTIONS request for the route, overrides default implementation
-func (r *Route) Options(f http.HandlerFunc) *Route {
-	r.Add("OPTIONS", f)
+func (r *Route) Options(h http.Handler) *Route {
+	r.Add("OPTIONS", h)
 
 	return r
 }
 
 // Set a TRACE request for the route, overrides default implementation
-func (r *Route) Trace(f http.HandlerFunc) *Route {
-	r.Add("TRACE", f)
+func (r *Route) Trace(h http.Handler) *Route {
+	r.Add("TRACE", h)
 
 	return r
 }
@@ -204,41 +204,41 @@ func (r *Route) Trace(f http.HandlerFunc) *Route {
 // Set a GET request handler for the Route. A default HEAD request implementation
 // will also be implemented since HEAD requests should perform the same as a GET
 // request but simply not return the response body.
-func (r *Route) Get(f http.HandlerFunc) *Route {
-	r.Add("GET", f)
+func (r *Route) Get(h http.Handler) *Route {
+	r.Add("GET", h)
 
 	if r.yam.Config.AddHeadOnGet {
 		// Apply the head middleware to the head handler
-		r.Add("HEAD", f)
+		r.Add("HEAD", h)
 	}
 
 	return r
 }
 
 // Set a POST request handler for the route.
-func (r *Route) Post(f http.HandlerFunc) *Route {
-	r.Add("POST", f)
+func (r *Route) Post(h http.Handler) *Route {
+	r.Add("POST", h)
 
 	return r
 }
 
 // Set a PUT request handler for the route.
-func (r *Route) Put(f http.HandlerFunc) *Route {
-	r.Add("PUT", f)
+func (r *Route) Put(h http.Handler) *Route {
+	r.Add("PUT", h)
 
 	return r
 }
 
 // Set a DELETE request handler for the route.
-func (r *Route) Delete(f http.HandlerFunc) *Route {
-	r.Add("DELETE", f)
+func (r *Route) Delete(h http.Handler) *Route {
+	r.Add("DELETE", h)
 
 	return r
 }
 
 // Set a PATCH request handler for the route.
-func (r *Route) Patch(f http.HandlerFunc) *Route {
-	r.Add("PATCH", f)
+func (r *Route) Patch(h http.Handler) *Route {
+	r.Add("PATCH", h)
 
 	return r
 }
